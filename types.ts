@@ -17,6 +17,7 @@ export enum ViewState {
   WALL = 'WALL',
   CHAT = 'CHAT',
   LEDGER = 'LEDGER',
+  JOURNAL = 'JOURNAL',
 }
 
 export type FundType = 'FREEDOM' | 'DREAM' | 'PLAY';
@@ -50,4 +51,10 @@ export interface LedgerState {
     dream: number;
     play: number;
   };
+}
+
+export interface JournalEntry {
+  id: string;
+  timestamp: number;
+  items: string[];
 }

@@ -4,7 +4,8 @@ import { fetchBookQuotes } from './services/geminiService';
 import { QuoteCard } from './components/QuoteCard';
 import { ChatInterface } from './components/ChatInterface';
 import { LedgerInterface } from './components/LedgerInterface';
-import { BookOpen, MessageCircle, Sparkles, Loader2, RefreshCw, Wallet } from 'lucide-react';
+import { SuccessJournal } from './components/SuccessJournal';
+import { BookOpen, MessageCircle, Sparkles, Loader2, RefreshCw, Wallet, NotebookPen } from 'lucide-react';
 
 const App: React.FC = () => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -33,7 +34,7 @@ const App: React.FC = () => {
     <div className="min-h-screen font-sans text-gray-900 pb-20">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-30 border-b border-amber-100">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0">
           <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setViewState(ViewState.WALL)}>
             <div className="bg-amber-500 p-2 rounded-lg text-white">
               <BookOpen className="w-6 h-6" />
@@ -49,18 +50,27 @@ const App: React.FC = () => {
           <div className="flex items-center space-x-2">
             <button 
               onClick={() => setViewState(ViewState.LEDGER)}
-              className="flex items-center space-x-2 bg-white border border-amber-200 hover:bg-amber-50 text-amber-900 px-4 py-2 rounded-full transition-all duration-300 font-medium shadow-sm"
+              className="flex items-center space-x-2 bg-white border border-amber-200 hover:bg-amber-50 text-amber-900 px-4 py-2 rounded-full transition-all duration-300 font-medium shadow-sm text-sm md:text-base"
             >
               <Wallet className="w-4 h-4 text-amber-600" />
-              <span className="hidden sm:inline">我的账本</span>
+              <span>我的账本</span>
+            </button>
+
+            <button 
+              onClick={() => setViewState(ViewState.JOURNAL)}
+              className="flex items-center space-x-2 bg-white border border-amber-200 hover:bg-amber-50 text-amber-900 px-4 py-2 rounded-full transition-all duration-300 font-medium shadow-sm text-sm md:text-base"
+            >
+              <NotebookPen className="w-4 h-4 text-amber-600" />
+              <span>成功日记</span>
             </button>
 
             <button 
               onClick={() => setViewState(ViewState.CHAT)}
-              className="flex items-center space-x-2 bg-amber-100 hover:bg-amber-200 text-amber-900 px-4 py-2 rounded-full transition-all duration-300 font-medium"
+              className="flex items-center space-x-2 bg-amber-100 hover:bg-amber-200 text-amber-900 px-4 py-2 rounded-full transition-all duration-300 font-medium text-sm md:text-base"
             >
               <MessageCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Ask Money</span>
+              <span className="sm:hidden">Chat</span>
             </button>
           </div>
         </div>
@@ -132,6 +142,7 @@ const App: React.FC = () => {
       {/* Footer */}
       <footer className="mt-20 py-8 text-center text-gray-400 text-sm">
         <p>© {new Date().getFullYear()} Money's Wisdom. Inspired by Bodo Schäfer.</p>
+        <p className="mt-1 font-medium text-amber-600/60">Created by Daniel_rmc</p>
         <div className="flex justify-center items-center mt-2 space-x-1">
           <Sparkles className="w-3 h-3 text-amber-400" />
           <span>Powered by Gemini 2.5 Flash</span>
@@ -146,6 +157,11 @@ const App: React.FC = () => {
       {/* Ledger Modal */}
       {viewState === ViewState.LEDGER && (
         <LedgerInterface onClose={() => setViewState(ViewState.WALL)} />
+      )}
+
+      {/* Success Journal Modal */}
+      {viewState === ViewState.JOURNAL && (
+        <SuccessJournal onClose={() => setViewState(ViewState.WALL)} />
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, TrendingUp, Rocket, PartyPopper, Plus, History, Save, Lock, Target, Minus, CheckCircle, Trash2 } from 'lucide-react';
+import { X, TrendingUp, Rocket, PartyPopper, Plus, History, Save, Lock, Target, Minus, CheckCircle, Trash2, AlertCircle, Sparkles, Sun } from 'lucide-react';
 import { FundType, LedgerState, Transaction, DreamGoal } from '../types';
 
 interface LedgerInterfaceProps {
@@ -22,7 +22,7 @@ const INITIAL_STATE: LedgerState = {
   }
 };
 
-type ModalType = 'NONE' | 'ADD_GOAL' | 'REALIZE_DREAM' | 'SPEND_PLAY';
+type ModalType = 'NONE' | 'ADD_GOAL' | 'REALIZE_DREAM' | 'SPEND_PLAY' | 'CONFIRM_COMBINED_SPEND' | 'INSUFFICIENT_FUNDS';
 
 export const LedgerInterface: React.FC<LedgerInterfaceProps> = ({ onClose }) => {
   const [state, setState] = useState<LedgerState>(INITIAL_STATE);
@@ -155,31 +155,77 @@ export const LedgerInterface: React.FC<LedgerInterfaceProps> = ({ onClose }) => 
     closeModal();
   };
 
-  const handleRealizeDream = () => {
-    const goal = state.dreamGoals.find(g => g.id === selectedGoalId);
+  const executeDreamRealization = (goalId: string, dreamAmount: number, playAmount: number) => {
+    const goal = state.dreamGoals.find(g => g.id === goalId);
     if (!goal) return;
-    
-    if (goal.cost > state.dreamFund) {
-      alert("梦想基金余额不足以实现这个梦想，继续加油存钱吧！");
-      return;
+
+    const newTransactions: Transaction[] = [];
+    const timestamp = Date.now();
+
+    // Deduct from Dream Fund
+    if (dreamAmount > 0) {
+      newTransactions.push({
+        id: timestamp + '-D',
+        amount: dreamAmount,
+        fundType: 'DREAM',
+        type: 'WITHDRAWAL',
+        description: `实现梦想: ${goal.name}`,
+        date: timestamp
+      });
     }
 
-    const transaction: Transaction = {
-      id: Date.now().toString(),
-      amount: goal.cost,
-      fundType: 'DREAM',
-      type: 'WITHDRAWAL',
-      description: `实现梦想: ${goal.name}`,
-      date: Date.now()
-    };
+    // Deduct from Play Fund (if needed)
+    if (playAmount > 0) {
+       newTransactions.push({
+        id: timestamp + '-P',
+        amount: playAmount,
+        fundType: 'PLAY',
+        type: 'WITHDRAWAL',
+        description: `支持梦想: ${goal.name} (余额补足)`,
+        date: timestamp
+      });
+    }
 
     setState(prev => ({
       ...prev,
-      dreamFund: prev.dreamFund - goal.cost,
-      dreamGoals: prev.dreamGoals.map(g => g.id === goal.id ? { ...g, isAchieved: true, achievedDate: Date.now() } : g),
-      transactions: [transaction, ...prev.transactions]
+      dreamFund: prev.dreamFund - dreamAmount,
+      playFund: prev.playFund - playAmount,
+      dreamGoals: prev.dreamGoals.map(g => g.id === goal.id ? { ...g, isAchieved: true, achievedDate: timestamp } : g),
+      transactions: [...newTransactions, ...prev.transactions]
     }));
+    
     closeModal();
+  };
+
+  const checkDreamFunds = () => {
+    const goal = state.dreamGoals.find(g => g.id === selectedGoalId);
+    if (!goal) return;
+    
+    // Case 1: Dream fund is sufficient
+    if (state.dreamFund >= goal.cost) {
+      executeDreamRealization(goal.id, goal.cost, 0);
+      return;
+    }
+
+    // Case 2: Dream fund + Play fund is sufficient
+    if (state.dreamFund + state.playFund >= goal.cost) {
+      // Open confirmation for using Play Fund
+      setActiveModal('CONFIRM_COMBINED_SPEND');
+      return;
+    }
+
+    // Case 3: Totally insufficient
+    setActiveModal('INSUFFICIENT_FUNDS');
+  };
+
+  const handleCombinedRealization = () => {
+     const goal = state.dreamGoals.find(g => g.id === selectedGoalId);
+     if (!goal) return;
+
+     const dreamAmount = state.dreamFund; // Use all dream fund
+     const playAmount = goal.cost - state.dreamFund; // The rest comes from play
+
+     executeDreamRealization(goal.id, dreamAmount, playAmount);
   };
 
   const deleteGoal = (id: string) => {
@@ -548,7 +594,7 @@ export const LedgerInterface: React.FC<LedgerInterfaceProps> = ({ onClose }) => 
           </div>
       )}
 
-      {/* 3. Realize Dream Modal */}
+      {/* 3. Realize Dream Modal (Selection) */}
       {activeModal === 'REALIZE_DREAM' && (
           <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl w-full max-w-md p-6">
@@ -576,7 +622,7 @@ export const LedgerInterface: React.FC<LedgerInterfaceProps> = ({ onClose }) => 
                       <div className="flex justify-end space-x-2 mt-6">
                           <button onClick={closeModal} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg">再等等</button>
                           <button 
-                            onClick={handleRealizeDream} 
+                            onClick={checkDreamFunds} 
                             disabled={!selectedGoalId}
                             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-bold disabled:bg-gray-300"
                           >
@@ -586,6 +632,81 @@ export const LedgerInterface: React.FC<LedgerInterfaceProps> = ({ onClose }) => 
                   </div>
               </div>
           </div>
+      )}
+
+      {/* 4. Combined Spend Confirmation Modal */}
+      {activeModal === 'CONFIRM_COMBINED_SPEND' && selectedGoalId && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+           <div className="bg-white rounded-2xl w-full max-w-md p-6">
+              <div className="flex items-center space-x-2 mb-4">
+                  <AlertCircle className="w-6 h-6 text-pink-500" />
+                  <h3 className="text-xl font-bold text-gray-800">梦想基金余额不足</h3>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-xl mb-6 text-sm text-gray-700 leading-relaxed">
+                  <p>梦想基金还差 
+                      <span className="font-bold text-red-500 mx-1">
+                        ¥{(state.dreamGoals.find(g => g.id === selectedGoalId)?.cost || 0) - state.dreamFund}
+                      </span>
+                  。</p>
+                  <p className="mt-2">乐享基金余额充足，是否愿意暂时牺牲一部分娱乐，从 <span className="font-bold text-pink-600">乐享基金</span> 中支付剩余款项来实现这个梦想？</p>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                  <button onClick={closeModal} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg">再等等</button>
+                  <button onClick={handleCombinedRealization} className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:opacity-90 font-bold shadow-md">
+                      愿意，实现梦想！
+                  </button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* 5. Insufficient Funds Gentle Modal */}
+      {activeModal === 'INSUFFICIENT_FUNDS' && selectedGoalId && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+           <div className="bg-white rounded-2xl w-full max-w-md p-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-2 bg-amber-400"></div>
+              
+              <div className="flex flex-col items-center text-center mb-4 pt-4">
+                  <div className="bg-amber-100 p-4 rounded-full mb-3">
+                      <Sun className="w-8 h-8 text-amber-500" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800">梦想还在路上</h3>
+              </div>
+              
+              <div className="bg-gray-50 p-5 rounded-xl mb-6 text-sm text-gray-600 leading-relaxed space-y-2">
+                  <div className="flex justify-between border-b border-gray-200 pb-2">
+                      <span>目标金额</span>
+                      <span className="font-bold text-gray-800">¥{state.dreamGoals.find(g => g.id === selectedGoalId)?.cost}</span>
+                  </div>
+                   <div className="flex justify-between text-xs pt-1">
+                      <span>梦想基金</span>
+                      <span>¥{state.dreamFund}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                      <span>乐享基金</span>
+                      <span>¥{state.playFund}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-gray-200 text-red-500 font-bold">
+                      <span>总缺口</span>
+                      <span>
+                        ¥{(state.dreamGoals.find(g => g.id === selectedGoalId)?.cost || 0) - (state.dreamFund + state.playFund)}
+                      </span>
+                  </div>
+                  
+                  <p className="mt-4 text-center italic text-amber-700 font-medium">
+                      "请继续为自己的梦想添砖加瓦吧。<br/>距离实现梦想就只差一步啦。✨"
+                  </p>
+              </div>
+
+              <div className="flex justify-center">
+                  <button onClick={closeModal} className="w-full px-6 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 font-bold shadow-md transition-all">
+                      我会继续加油的！
+                  </button>
+              </div>
+           </div>
+        </div>
       )}
 
     </div>
