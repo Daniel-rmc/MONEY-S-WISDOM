@@ -1,3 +1,4 @@
+
 export interface Quote {
   id: string;
   text: string;
@@ -15,4 +16,38 @@ export interface ChatMessage {
 export enum ViewState {
   WALL = 'WALL',
   CHAT = 'CHAT',
+  LEDGER = 'LEDGER',
+}
+
+export type FundType = 'FREEDOM' | 'DREAM' | 'PLAY';
+export type TransactionType = 'DEPOSIT' | 'WITHDRAWAL';
+
+export interface Transaction {
+  id: string;
+  amount: number;
+  fundType: FundType;
+  type: TransactionType;
+  description: string;
+  date: number;
+}
+
+export interface DreamGoal {
+  id: string;
+  name: string;
+  cost: number;
+  isAchieved: boolean;
+  achievedDate?: number;
+}
+
+export interface LedgerState {
+  freedomFund: number;
+  dreamFund: number;
+  playFund: number;
+  transactions: Transaction[];
+  dreamGoals: DreamGoal[];
+  percentages: {
+    freedom: number;
+    dream: number;
+    play: number;
+  };
 }

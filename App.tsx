@@ -3,7 +3,8 @@ import { Quote, ViewState } from './types';
 import { fetchBookQuotes } from './services/geminiService';
 import { QuoteCard } from './components/QuoteCard';
 import { ChatInterface } from './components/ChatInterface';
-import { BookOpen, MessageCircle, Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import { LedgerInterface } from './components/LedgerInterface';
+import { BookOpen, MessageCircle, Sparkles, Loader2, RefreshCw, Wallet } from 'lucide-react';
 
 const App: React.FC = () => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -33,7 +34,7 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-30 border-b border-amber-100">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setViewState(ViewState.WALL)}>
             <div className="bg-amber-500 p-2 rounded-lg text-white">
               <BookOpen className="w-6 h-6" />
             </div>
@@ -45,40 +46,52 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <button 
-            onClick={() => setViewState(ViewState.CHAT)}
-            className="flex items-center space-x-2 bg-amber-100 hover:bg-amber-200 text-amber-900 px-4 py-2 rounded-full transition-all duration-300 font-medium"
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Ask Money</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => setViewState(ViewState.LEDGER)}
+              className="flex items-center space-x-2 bg-white border border-amber-200 hover:bg-amber-50 text-amber-900 px-4 py-2 rounded-full transition-all duration-300 font-medium shadow-sm"
+            >
+              <Wallet className="w-4 h-4 text-amber-600" />
+              <span className="hidden sm:inline">我的账本</span>
+            </button>
+
+            <button 
+              onClick={() => setViewState(ViewState.CHAT)}
+              className="flex items-center space-x-2 bg-amber-100 hover:bg-amber-200 text-amber-900 px-4 py-2 rounded-full transition-all duration-300 font-medium"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">Ask Money</span>
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 pt-8">
         
-        {/* Intro Section */}
-        <section className="text-center mb-12 space-y-4">
-          <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-800">
-            财富的智慧 <br/> 
-            <span className="text-amber-500">源于思维的改变</span>
-          </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto text-lg">
-            "你可以把你的钱生出更多的钱，但这需要时间，也需要你去做一些事情。"
-          </p>
-          <button 
-            onClick={loadQuotes}
-            disabled={loading}
-            className="inline-flex items-center space-x-2 text-amber-600 hover:text-amber-700 transition-colors"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : <RefreshCw className="w-4 h-4"/>}
-            <span className="text-sm font-semibold">Refresh Wisdom</span>
-          </button>
-        </section>
+        {/* Intro Section - Only show on Wall */}
+        {viewState === ViewState.WALL && (
+          <section className="text-center mb-12 space-y-4">
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-800">
+              财富的智慧 <br/> 
+              <span className="text-amber-500">源于思维的改变</span>
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto text-lg">
+              "你可以把你的钱生出更多的钱，但这需要时间，也需要你去做一些事情。"
+            </p>
+            <button 
+              onClick={loadQuotes}
+              disabled={loading}
+              className="inline-flex items-center space-x-2 text-amber-600 hover:text-amber-700 transition-colors"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : <RefreshCw className="w-4 h-4"/>}
+              <span className="text-sm font-semibold">Refresh Wisdom</span>
+            </button>
+          </section>
+        )}
 
         {/* Loading State */}
-        {loading && quotes.length === 0 && (
+        {loading && quotes.length === 0 && viewState === ViewState.WALL && (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-12 h-12 text-amber-400 animate-spin mb-4" />
             <p className="text-gray-500 animate-pulse">Consulting the wise dog...</p>
@@ -86,7 +99,7 @@ const App: React.FC = () => {
         )}
 
         {/* Error State */}
-        {error && !loading && (
+        {error && !loading && viewState === ViewState.WALL && (
           <div className="text-center py-12 bg-red-50 rounded-lg border border-red-100">
             <p className="text-red-600 mb-2">{error}</p>
             <button 
@@ -98,8 +111,8 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Grid */}
-        {!loading && !error && (
+        {/* Quote Grid */}
+        {!loading && !error && viewState === ViewState.WALL && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {quotes.map((quote, index) => (
               <QuoteCard key={quote.id} quote={quote} index={index} />
@@ -128,6 +141,11 @@ const App: React.FC = () => {
       {/* Chat Modal */}
       {viewState === ViewState.CHAT && (
         <ChatInterface onClose={() => setViewState(ViewState.WALL)} />
+      )}
+
+      {/* Ledger Modal */}
+      {viewState === ViewState.LEDGER && (
+        <LedgerInterface onClose={() => setViewState(ViewState.WALL)} />
       )}
     </div>
   );
